@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OnTrack</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Auth Gate -->
+  <div id="auth-screen" class="auth-overlay">
+    <div class="auth-card">
+      <p class="eyebrow">Ledger access</p>
+      <h1 class="auth-title">Enter your key</h1>
+      <p class="auth-sub">Six-character passkey. Ask whoever set up the group if you don't have yours.</p>
+      <input type="password" id="passkey-input" class="input-field" maxlength="6" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;" autocomplete="off">
+      <button id="unlock-btn" type="button" class="btn-primary">Unlock ledger</button>
+      <p id="auth-error" class="error-msg hidden">That key isn't recognized.</p>
+    </div>
+  </div>
+
+  <!-- Onboarding Screen -->
+  <div id="onboarding-screen" class="hidden">
+    <div class="onboarding-card">
+      <p class="eyebrow">First-time setup</p>
+      <h2>What are you working on?</h2>
+      <p class="onboard-sub">Pick as many as apply. Each one seeds your grid with a starting set of habits, skills, and things to watch for &mdash; you can edit everything after.</p>
+
+      <div class="struggles-grid">
+        <label><input type="checkbox" class="struggle-cb" value="getting_over_ex"> Getting over an ex</label>
+        <label><input type="checkbox" class="struggle-cb" value="love_and_dating"> Dating &amp; attachment</label>
+        <label><input type="checkbox" class="struggle-cb" value="peer_pressure_fomo"> Peer pressure &amp; FOMO</label>
+        <label><input type="checkbox" class="struggle-cb" value="social_anxiety"> Social anxiety</label>
+        <label><input type="checkbox" class="struggle-cb" value="anger_and_frustration"> Anger &amp; frustration</label>
+        <label><input type="checkbox" class="struggle-cb" value="brain_fog_doomscrolling"> Brain fog &amp; doomscrolling</label>
+        <label><input type="checkbox" class="struggle-cb" value="procrastination_execution"> Procrastination</label>
+        <label><input type="checkbox" class="struggle-cb" value="burnout_overwhelm"> Burnout &amp; overwhelm</label>
+        <label><input type="checkbox" class="struggle-cb" value="life_direction_identity"> Life direction &amp; purpose</label>
+      </div>
+
+      <button id="submit-onboarding-btn" type="button" class="btn-primary">Build my dashboard</button>
+    </div>
+  </div>
+
+  <!-- Main App View -->
+  <div id="app-screen" class="hidden">
+    <header>
+      <div class="header-left">
+        <span class="brand-title">OnTrack</span>
+        <nav class="nav-tabs">
+          <button class="nav-btn active" data-tab="habits">Habits</button>
+          <button class="nav-btn" data-tab="skills">Skills</button>
+          <button class="nav-btn" data-tab="progress">Progress</button>
+          <button class="nav-btn" data-tab="group">Group</button>
+          <button class="nav-btn" data-tab="friction">Friction Log</button>
+          <button class="nav-btn" data-tab="settings">Settings</button>
+        </nav>
+      </div>
+      <div class="user-badge">
+        <span id="active-user-name">User</span>
+        <button id="lock-btn" type="button" class="lock-btn">Lock</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- Habits Tab -->
+      <section id="tab-habits">
+        <div id="advice-container" class="advice-bar hidden"></div>
+        <div class="panel">
+          <div class="panel-title">Habit grid</div>
+          <div class="month-nav">
+            <button id="prev-month-btn" type="button" class="btn-secondary month-nav-btn" aria-label="Previous month">&lsaquo;</button>
+            <span id="month-label" class="month-label">Month Year</span>
+            <button id="next-month-btn" type="button" class="btn-secondary month-nav-btn" aria-label="Next month">&rsaquo;</button>
+            <button id="today-btn" type="button" class="btn-secondary today-btn">Today</button>
+          </div>
+          <div class="grid-wrapper">
+            <table class="habit-table">
+              <thead>
+                <tr id="grid-header"></tr>
+              </thead>
+              <tbody id="grid-body"></tbody>
+            </table>
+          </div>
+          <div class="inline-form">
+            <input type="text" id="new-habit-input" class="inline-input" placeholder="Habit name">
+            <button id="add-habit-btn" type="button" class="btn-secondary">Add</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Skills Tab -->
+      <section id="tab-skills" class="hidden">
+        <div class="panel">
+          <div class="panel-title">Active learning targets</div>
+          <div id="skills-container" class="skills-grid"></div>
+          <div class="inline-form skill-form-margin">
+            <input type="text" id="new-skill-input" class="inline-input" placeholder="Skill or project name">
+            <button id="add-skill-btn" type="button" class="btn-secondary">Add skill</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Progress Tab -->
+      <section id="tab-progress" class="hidden">
+        <div class="panel">
+          <div class="panel-title">How far you've come</div>
+          <div id="progress-summary" class="progress-summary"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Consistency by month</div>
+          <div id="progress-chart" class="progress-chart"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Per-habit breakdown</div>
+          <div id="progress-habits" class="progress-habits"></div>
+        </div>
+      </section>
+
+      <!-- Group Tab -->
+      <section id="tab-group" class="hidden">
+        <div class="panel">
+          <div class="panel-title">Group accountability</div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Profile</th>
+                <th>Status</th>
+                <th>Last seen</th>
+                <th>Consistency</th>
+                <th>Done</th>
+                <th>Elastic</th>
+                <th>Missed</th>
+                <th>Stake status</th>
+              </tr>
+            </thead>
+            <tbody id="group-table-body"></tbody>
+          </table>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Monthly stake</div>
+          <p class="stake-info">Penalty amount: $20</p>
+          <p class="stake-info">Pass threshold: 80%</p>
+        </div>
+      </section>
+
+      <!-- Friction Log Tab -->
+      <section id="tab-friction" class="hidden">
+        <div class="panel">
+          <div class="panel-title">Why habits broke</div>
+          <div id="friction-log-list" class="friction-list"></div>
+        </div>
+      </section>
+
+      <!-- Settings Tab -->
+      <section id="tab-settings" class="hidden">
+        <div class="panel">
+          <div class="panel-title">Profile &amp; data</div>
+          <div class="settings-form">
+            <div>
+              <label class="input-label" for="display-name-input">Display name</label>
+              <input type="text" id="display-name-input" class="inline-input full-width">
+            </div>
+            <div>
+              <p class="input-label mb-8">Data safeguards</p>
+              <div class="flex-gap-8">
+                <button id="export-btn" type="button" class="btn-secondary">Export JSON</button>
+                <button id="import-btn" type="button" class="btn-secondary">Import JSON</button>
+                <input type="file" id="import-file" class="hidden" accept=".json">
+              </div>
+              <p class="hint-text">Export regularly. Everything lives only in this browser &mdash; see the note in chat about what that means for the Group tab.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Failure Modal -->
+  <div id="failure-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="panel-title modal-title-margin">Log failure reason</div>
+      <p class="modal-subtitle">Why was this habit missed today?</p>
+      <div class="modal-buttons">
+        <button class="modal-btn" type="button" data-reason="Fatigue">Fatigue</button>
+        <button class="modal-btn" type="button" data-reason="Forgot">Forgot</button>
+        <button class="modal-btn" type="button" data-reason="Busy">Busy / time limit</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
