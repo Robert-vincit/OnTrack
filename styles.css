@@ -84,7 +84,6 @@ header {
   font-size: 1.15rem;
   letter-spacing: -0.02em;
   background: linear-gradient(135deg, #ffffff 0%, #7fbf9e 100%);
-  background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -129,7 +128,66 @@ header {
   color: var(--accent-light);
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
+}
+
+/* --- AVATARS --- */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.avatar-initials {
+  font-weight: 700;
+  color: #cbd5e1;
+  line-height: 1;
+}
+
+.avatar-sm {
+  width: 26px;
+  height: 26px;
+  font-size: 0.65rem;
+}
+
+.avatar-md {
+  width: 34px;
+  height: 34px;
+  font-size: 0.75rem;
+}
+
+.avatar-lg {
+  width: 72px;
+  height: 72px;
+  font-size: 1.1rem;
+}
+
+.avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.avatar-controls {
+  flex: 1;
+}
+
+.profile-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .lock-btn {
@@ -533,9 +591,15 @@ table.habit-table td.is-today {
 /* --- HABIT GRID & TABLE --- */
 .grid-wrapper {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 table.habit-table {
@@ -565,11 +629,77 @@ table.habit-table td.sticky-col {
   left: 0;
   background: #0f1712;
   text-align: left;
-  min-width: 220px;
+  min-width: 260px;
   z-index: 2;
   padding: 10px 14px;
   font-weight: 500;
   border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.habit-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.habit-name {
+  cursor: text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.habit-name:hover {
+  text-decoration: underline dotted;
+}
+
+.habit-rename-input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--accent);
+  color: #ffffff;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.habit-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.habit-action-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.habit-action-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.habit-action-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.habit-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
 }
 
 .cell-toggle {
@@ -700,6 +830,7 @@ table.habit-table td.sticky-col {
 /* --- GROUP TABLE --- */
 .data-table {
   width: 100%;
+  min-width: 640px;
   border-collapse: collapse;
   text-align: left;
 }
@@ -720,6 +851,20 @@ table.habit-table td.sticky-col {
 
 .stake-pass { color: #22c55e; }
 .stake-fail { color: #ef4444; }
+.stake-neutral { color: #94a3b8; }
+
+.stake-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.stake-toggle-btn {
+  padding: 4px 10px;
+  font-size: 0.76rem;
+  min-height: 26px;
+}
 
 .status-cell {
   display: flex;
@@ -793,6 +938,27 @@ table.habit-table td.sticky-col {
   flex-direction: column;
   gap: 18px;
   max-width: 420px;
+}
+
+.settings-form-row {
+  flex-direction: row;
+  max-width: none;
+  gap: 16px;
+}
+
+.settings-form-row > div {
+  flex: 1;
+}
+
+.btn-danger {
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
 }
 
 .input-label {
@@ -880,10 +1046,128 @@ table.habit-table td.sticky-col {
 }
 
 /* --- RESPONSIVE --- */
+@media (max-width: 900px) {
+  .header-left {
+    gap: 16px;
+  }
+
+  .nav-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  .nav-btn {
+    white-space: nowrap;
+  }
+}
+
 @media (max-width: 720px) {
-  header { flex-wrap: wrap; gap: 12px; padding: 14px; }
-  .header-left { flex-wrap: wrap; gap: 12px; }
-  main { padding: 16px; }
+  header {
+    flex-wrap: nowrap;
+    padding: 12px 14px;
+    gap: 10px;
+  }
+
+  .header-left {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .brand-title {
+    display: none; /* saves room for the tab bar + user badge on narrow screens */
+  }
+
+  .user-badge span#active-user-name {
+    display: none; /* avatar + Lock button are enough once space is tight */
+  }
+
+  main {
+    padding: 14px;
+  }
+
+  .panel {
+    padding: 18px;
+    border-radius: 12px;
+  }
+
+  .onboarding-card,
+  .auth-card {
+    padding: 26px 22px;
+  }
+
+  .struggles-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-form-row {
+    flex-direction: column;
+  }
+
+  .avatar-row {
+    align-items: flex-start;
+  }
+
+  .stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .skills-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bar-chart {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    justify-content: flex-start;
+  }
+
+  .bar-col {
+    min-width: 44px;
+  }
+
+  .habit-progress-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .habit-progress-pct {
+    text-align: left;
+  }
+
+  .month-nav {
+    flex-wrap: wrap;
+  }
+
+  .today-btn {
+    margin-left: 0;
+  }
+
+  .habit-action-btn {
+    width: 26px;
+    height: 26px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stat-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .onboarding-card h2,
+  .auth-title {
+    font-size: 1.4rem;
+  }
+}
+
+/* Prevent iOS Safari from auto-zooming on focus, which happens
+   whenever a text input renders below 16px. */
+@media (max-width: 720px) {
+  .input-field,
+  .inline-input,
+  .habit-rename-input {
+    font-size: 16px;
+  }
 }
 
 /* --- ACCESSIBILITY: visible keyboard focus --- */

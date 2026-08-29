@@ -4,7 +4,10 @@ const KEYS = {
   "CR8N3T": "friend2",
   "DZ5V6H": "friend3",
   "EY1J8R": "friend4",
-  "FW3S2L": "friend5"
+  "FW3S2L": "friend5",
+  "GH2M7X": "friend6",
+  "JK9P4L": "friend7",
+  "MN6R1Q": "friend8"
 };
 
 const COACHING = {
@@ -172,6 +175,7 @@ const STRUGGLE_PRESETS = {
 let state = {
   version: 1,
   activeUserKey: null,
+  stakeSettings: { penalty: 20, thresholdPct: 80 },
   profiles: {
     user: { name: "You", onboarded: false, habits: [], skills: [], logs: {}, friction: [], lastSeen: null },
     friend1: { name: "Friend 1", onboarded: false, habits: [], skills: [], logs: {}, friction: [], lastSeen: null },
@@ -179,6 +183,9 @@ let state = {
     friend3: { name: "Friend 3", onboarded: false, habits: [], skills: [], logs: {}, friction: [], lastSeen: null },
     friend4: { name: "Friend 4", onboarded: false, habits: [], skills: [], logs: {}, friction: [], lastSeen: null },
     friend5: { name: "Friend 5", onboarded: false, habits: [], skills: [], logs: {}, friction: [], lastSeen: null },
+    friend6: { name: "Friend 6", onboarded: false, habits: [], skills: [], logs: {}, friction: [], lastSeen: null },
+    friend7: { name: "Friend 7", onboarded: false, habits: [], skills: [], logs: {}, friction: [], lastSeen: null },
+    friend8: { name: "Friend 8", onboarded: false, habits: [], skills: [], logs: {}, friction: [], lastSeen: null },
   }
 };
 
@@ -242,6 +249,7 @@ function init() {
   Object.values(state.profiles).forEach(migrateLegacyLogs);
 
   setupEventListeners();
+  setupCrossTabSync();
 
   try {
     const sessionKey = localStorage.getItem('four_keys_session');
@@ -256,8 +264,10 @@ function init() {
 function saveData() {
   try {
     localStorage.setItem('four_keys_data', JSON.stringify(state));
+    return true;
   } catch (err) {
     console.error('Could not save data.', err);
+    return false;
   }
 }
 
@@ -345,6 +355,35 @@ function startPresenceHeartbeat() {
   window.addEventListener('beforeunload', touchLastSeen);
 }
 
+/* Cross-tab live sync.
+   The 'storage' event fires in every OTHER same-origin tab/window the
+   instant one tab writes to localStorage — it never fires in the tab
+   that made the write. That gives genuinely instant online/offline
+   and data updates, but only between tabs of the SAME browser on the
+   SAME device (e.g. two people sharing one computer, or you testing
+   with two tabs open). It cannot see other people's separate phones —
+   there's no channel between two different browsers at all without a
+   backend in between. */
+function setupCrossTabSync() {
+  window.addEventListener('storage', (e) => {
+    if (e.key !== 'four_keys_data' || !e.newValue) return;
+    try {
+      const incoming = JSON.parse(e.newValue);
+      if (incoming && incoming.profiles) {
+        state.profiles = { ...state.profiles, ...incoming.profiles };
+      }
+      if (incoming && incoming.stakeSettings) {
+        state.stakeSettings = incoming.stakeSettings;
+      }
+    } catch (err) {
+      console.error('Could not read update from another tab.', err);
+      return;
+    }
+    updateStakeDisplays();
+    refreshGroupIfVisible();
+  });
+}
+
 function stopPresenceHeartbeat() {
   if (presenceInterval) {
     clearInterval(presenceInterval);
@@ -400,6 +439,7 @@ function showApp() {
   const nameInput = document.getElementById('display-name-input');
   if (nameLabel) nameLabel.innerText = curProfile.name;
   if (nameInput) nameInput.value = curProfile.name;
+  refreshAvatarDisplays();
 
   renderAll();
 }
@@ -455,6 +495,8 @@ function switchTab(tab, clickedBtn) {
   if (clickedBtn) clickedBtn.classList.add('active');
 
   if (tab === 'progress') renderProgress();
+  if (tab === 'group') renderGroup();
+  if (tab === 'settings') populateSettingsForm();
 }
 
 /* Month navigation */
@@ -463,11 +505,17 @@ function renderMonthLabel() {
   if (label) label.innerText = `${MONTH_NAMES[viewMonth - 1]} ${viewYear}`;
 }
 
+function refreshGroupIfVisible() {
+  const groupTab = document.getElementById('tab-group');
+  if (groupTab && !groupTab.classList.contains('hidden')) renderGroup();
+}
+
 function changeMonth(delta) {
   viewMonth += delta;
   if (viewMonth > 12) { viewMonth = 1; viewYear += 1; }
   if (viewMonth < 1) { viewMonth = 12; viewYear -= 1; }
   renderHabits();
+  refreshGroupIfVisible();
 }
 
 function jumpToToday() {
@@ -475,6 +523,7 @@ function jumpToToday() {
   viewYear = now.getFullYear();
   viewMonth = now.getMonth() + 1;
   renderHabits();
+  refreshGroupIfVisible();
 }
 
 /* Habit Grid */
@@ -505,7 +554,18 @@ function renderHabits() {
 
   profile.habits.forEach((habit, hIdx) => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td class="sticky-col">${escapeHtml(habit)}</td>`;
+    const isFirst = hIdx === 0;
+    const isLast = hIdx === profile.habits.length - 1;
+    tr.innerHTML = `<td class="sticky-col">
+      <div class="habit-cell">
+        <span class="habit-name" data-hidx="${hIdx}" title="Click to rename">${escapeHtml(habit)}</span>
+        <div class="habit-actions">
+          <button type="button" class="habit-action-btn" data-action="up" data-hidx="${hIdx}" ${isFirst ? 'disabled' : ''} title="Move up">&uarr;</button>
+          <button type="button" class="habit-action-btn" data-action="down" data-hidx="${hIdx}" ${isLast ? 'disabled' : ''} title="Move down">&darr;</button>
+          <button type="button" class="habit-action-btn habit-delete-btn" data-action="delete" data-hidx="${hIdx}" title="Delete habit">&times;</button>
+        </div>
+      </div>
+    </td>`;
     for (let day = 1; day <= total; day++) {
       const key = logKey(hIdx, viewYear, viewMonth, day);
       const val = profile.logs[key] || '';
@@ -571,6 +631,83 @@ function addHabit() {
     saveData();
     renderHabits();
   }
+}
+
+/* Habit editing: rename, reorder, delete.
+   Logs are keyed by habit index, so reordering/deleting has to remap
+   every log entry that referenced the affected index(es) — otherwise
+   a habit's history would silently jump to a different habit. */
+function swapHabitLogs(profile, idxA, idxB) {
+  const remapped = {};
+  Object.keys(profile.logs).forEach(key => {
+    const parts = key.split('-');
+    let hIdx = Number(parts[0]);
+    if (hIdx === idxA) hIdx = idxB;
+    else if (hIdx === idxB) hIdx = idxA;
+    remapped[[hIdx, ...parts.slice(1)].join('-')] = profile.logs[key];
+  });
+  profile.logs = remapped;
+}
+
+function moveHabit(hIdx, direction) {
+  const profile = state.profiles[state.activeUserKey];
+  const newIdx = hIdx + direction;
+  if (newIdx < 0 || newIdx >= profile.habits.length) return;
+  const tmp = profile.habits[hIdx];
+  profile.habits[hIdx] = profile.habits[newIdx];
+  profile.habits[newIdx] = tmp;
+  swapHabitLogs(profile, hIdx, newIdx);
+  saveData();
+  renderHabits();
+}
+
+function deleteHabit(hIdx) {
+  const profile = state.profiles[state.activeUserKey];
+  const name = profile.habits[hIdx];
+  if (!confirm(`Delete "${name}"? This also removes its logged history.`)) return;
+
+  profile.habits.splice(hIdx, 1);
+  const remapped = {};
+  Object.keys(profile.logs).forEach(key => {
+    const parts = key.split('-');
+    const idx = Number(parts[0]);
+    if (idx === hIdx) return; // drop this habit's history
+    const newIdx = idx > hIdx ? idx - 1 : idx;
+    remapped[[newIdx, ...parts.slice(1)].join('-')] = profile.logs[key];
+  });
+  profile.logs = remapped;
+  saveData();
+  renderHabits();
+}
+
+function renameHabit(hIdx, newName) {
+  const val = newName.trim();
+  if (!val) return;
+  state.profiles[state.activeUserKey].habits[hIdx] = val;
+  saveData();
+}
+
+function startRenameHabit(hIdx, spanEl) {
+  const profile = state.profiles[state.activeUserKey];
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'habit-rename-input';
+  input.value = profile.habits[hIdx];
+  spanEl.replaceWith(input);
+  input.focus();
+  input.select();
+
+  let cancelled = false;
+  const commit = () => {
+    if (cancelled) return;
+    renameHabit(hIdx, input.value);
+    renderHabits();
+  };
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') input.blur();
+    if (e.key === 'Escape') { cancelled = true; renderHabits(); }
+  });
+  input.addEventListener('blur', commit);
 }
 
 /* Skills Hub */
@@ -793,10 +930,21 @@ function renderGroup() {
   if (!tbody) return;
   tbody.innerHTML = '';
 
+  const monthNote = document.getElementById('group-month-note');
+  if (monthNote) monthNote.innerText = `Showing ${MONTH_NAMES[viewMonth - 1]} ${viewYear} — matches the month picker on the Habits tab.`;
+  updateStakeDisplays();
+
+  const monthKey = `${viewYear}-${pad2(viewMonth)}`;
+
   Object.keys(state.profiles).forEach(pKey => {
     const p = state.profiles[pKey];
     let done = 0, elastic = 0, missed = 0;
-    Object.values(p.logs).forEach(v => {
+    Object.keys(p.logs).forEach(key => {
+      const parts = key.split('-');
+      if (parts.length !== 4) return;
+      const [, y, m] = parts;
+      if (Number(y) !== viewYear || Number(m) !== viewMonth) return;
+      const v = p.logs[key];
       if (v === '✓') done++;
       if (v === '~') elastic++;
       if (v === '✕') missed++;
@@ -804,19 +952,32 @@ function renderGroup() {
 
     const total = done + elastic + missed;
     const rate = total > 0 ? Math.round(((done + elastic) / total) * 100) : 0;
-    const passed = rate >= 80;
+    const passed = total > 0 && rate >= state.stakeSettings.thresholdPct;
     const online = isOnline(p.lastSeen);
+
+    const paid = !!(p.stakeHistory && p.stakeHistory[monthKey] && p.stakeHistory[monthKey].paid);
+
+    let stakeCell;
+    if (total === 0) {
+      stakeCell = '<span class="stake-neutral">No data yet</span>';
+    } else if (passed) {
+      stakeCell = '<span class="stake-pass">Passed</span>';
+    } else if (paid) {
+      stakeCell = `<span class="stake-pass">Paid</span> <button type="button" class="btn-secondary stake-toggle-btn" data-pkey="${pKey}" data-monthkey="${monthKey}">Undo</button>`;
+    } else {
+      stakeCell = `<span class="stake-fail">$${state.stakeSettings.penalty} owed</span> <button type="button" class="btn-secondary stake-toggle-btn" data-pkey="${pKey}" data-monthkey="${monthKey}">Mark paid</button>`;
+    }
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${escapeHtml(p.name)}</td>
+      <td class="profile-cell"><span class="avatar avatar-sm">${avatarMarkup(p)}</span><span>${escapeHtml(p.name)}</span></td>
       <td class="status-cell"><span class="status-dot ${online ? 'online' : 'offline'}"></span>${online ? 'Online' : 'Offline'}</td>
       <td>${formatLastSeen(p.lastSeen)}</td>
-      <td>${rate}%</td>
+      <td>${total > 0 ? rate + '%' : '\u2014'}</td>
       <td>${done}</td>
       <td>${elastic}</td>
       <td>${missed}</td>
-      <td class="${passed ? 'stake-pass' : 'stake-fail'}">${passed ? 'Passed' : '$20 Owed'}</td>
+      <td class="stake-cell">${stakeCell}</td>
     `;
     tbody.appendChild(tr);
   });
@@ -851,6 +1012,76 @@ function updateDisplayName(val) {
   document.getElementById('active-user-name').innerText = trimmed;
   saveData();
   renderGroup();
+}
+
+/* Settings: stake rules (shared across the group) */
+function updateStakeDisplays() {
+  const penaltyDisplay = document.getElementById('stake-penalty-display');
+  const thresholdDisplay = document.getElementById('stake-threshold-display');
+  if (penaltyDisplay) penaltyDisplay.innerText = `$${state.stakeSettings.penalty}`;
+  if (thresholdDisplay) thresholdDisplay.innerText = `${state.stakeSettings.thresholdPct}%`;
+}
+
+function updateStakeSetting(field, rawValue) {
+  const num = parseFloat(rawValue);
+  if (Number.isNaN(num) || num < 0) return;
+  if (field === 'penalty') {
+    state.stakeSettings.penalty = Math.round(num);
+  } else if (field === 'thresholdPct') {
+    state.stakeSettings.thresholdPct = Math.min(100, Math.round(num));
+  }
+  saveData();
+  updateStakeDisplays();
+  refreshGroupIfVisible();
+}
+
+function toggleStakePaid(pKey, monthKey) {
+  const p = state.profiles[pKey];
+  if (!p) return;
+  if (!p.stakeHistory) p.stakeHistory = {};
+  const current = !!(p.stakeHistory[monthKey] && p.stakeHistory[monthKey].paid);
+  p.stakeHistory[monthKey] = { paid: !current };
+  saveData();
+  renderGroup();
+}
+
+/* Settings: profile + reset */
+function populateSettingsForm() {
+  const profile = state.profiles[state.activeUserKey];
+  if (!profile) return;
+
+  const nameInput = document.getElementById('display-name-input');
+  if (nameInput) nameInput.value = profile.name;
+
+  const identityNote = document.getElementById('settings-identity-note');
+  if (identityNote) identityNote.innerText = `Signed in as "${state.activeUserKey}". Data for this profile is stored only in this browser.`;
+
+  const penaltyInput = document.getElementById('stake-penalty-input');
+  const thresholdInput = document.getElementById('stake-threshold-input');
+  if (penaltyInput) penaltyInput.value = state.stakeSettings.penalty;
+  if (thresholdInput) thresholdInput.value = state.stakeSettings.thresholdPct;
+
+  refreshAvatarDisplays();
+}
+
+function resetProfile() {
+  const profile = state.profiles[state.activeUserKey];
+  if (!profile) return;
+  if (!confirm('Clear all of your habits, skills, logs, and friction history and restart onboarding? This cannot be undone unless you have an export.')) return;
+
+  state.profiles[state.activeUserKey] = {
+    name: profile.name,
+    avatar: profile.avatar,
+    onboarded: false,
+    habits: [],
+    skills: [],
+    logs: {},
+    friction: [],
+    lastSeen: profile.lastSeen,
+    stakeHistory: {}
+  };
+  saveData();
+  showApp();
 }
 
 /* Data Safeguards */
@@ -906,6 +1137,98 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+/* Profile pictures.
+   Stored as a resized, compressed base64 data URL directly on the
+   profile object (profile.avatar). Everything still lives in
+   localStorage, so images are downscaled hard before saving —
+   otherwise a couple of full-size photos can blow the ~5-10MB
+   per-origin quota and silently break saving for everyone. */
+function getInitials(name) {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  const initials = parts.length === 1
+    ? parts[0].slice(0, 2)
+    : parts[0][0] + parts[parts.length - 1][0];
+  return initials.toUpperCase();
+}
+
+function avatarMarkup(profile) {
+  if (profile && profile.avatar) {
+    return `<img src="${profile.avatar}" alt="" class="avatar-img">`;
+  }
+  return `<span class="avatar-initials">${escapeHtml(getInitials(profile ? profile.name : ''))}</span>`;
+}
+
+function resizeImageToDataUrl(file, maxDim, quality) {
+  return new Promise((resolve, reject) => {
+    if (!file.type || !file.type.startsWith('image/')) {
+      reject(new Error('That file is not an image.'));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read that file.'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Could not read that image.'));
+      img.onload = () => {
+        // Crop to a centered square, then scale down to maxDim x maxDim.
+        const side = Math.min(img.width, img.height);
+        const sx = (img.width - side) / 2;
+        const sy = (img.height - side) / 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = maxDim;
+        canvas.height = maxDim;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, maxDim, maxDim);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleAvatarUpload(e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+
+  try {
+    const dataUrl = await resizeImageToDataUrl(file, 160, 0.82);
+    const profile = state.profiles[state.activeUserKey];
+    if (!profile) return;
+    profile.avatar = dataUrl;
+    const ok = saveData();
+    if (!ok) {
+      profile.avatar = null;
+      alert("That photo was too large to save. Try a smaller image.");
+      return;
+    }
+    refreshAvatarDisplays();
+  } catch (err) {
+    alert(err.message || 'Could not use that photo.');
+  }
+}
+
+function removeAvatar() {
+  const profile = state.profiles[state.activeUserKey];
+  if (!profile) return;
+  profile.avatar = null;
+  saveData();
+  refreshAvatarDisplays();
+}
+
+function refreshAvatarDisplays() {
+  const profile = state.profiles[state.activeUserKey];
+  if (!profile) return;
+  const headerAvatar = document.getElementById('header-avatar');
+  const settingsAvatar = document.getElementById('settings-avatar');
+  if (headerAvatar) headerAvatar.innerHTML = avatarMarkup(profile);
+  if (settingsAvatar) settingsAvatar.innerHTML = avatarMarkup(profile);
+  refreshGroupIfVisible();
+}
+
 /* Global Listeners */
 function setupEventListeners() {
   const bind = (id, event, handler) => {
@@ -932,6 +1255,20 @@ function setupEventListeners() {
   bind('import-btn', 'click', () => document.getElementById('import-file').click());
   bind('import-file', 'change', importData);
   bind('display-name-input', 'change', (e) => updateDisplayName(e.target.value));
+  bind('stake-penalty-input', 'change', (e) => updateStakeSetting('penalty', e.target.value));
+  bind('stake-threshold-input', 'change', (e) => updateStakeSetting('thresholdPct', e.target.value));
+  bind('reset-profile-btn', 'click', resetProfile);
+  bind('avatar-upload-btn', 'click', () => document.getElementById('avatar-file').click());
+  bind('avatar-file', 'change', handleAvatarUpload);
+  bind('avatar-remove-btn', 'click', removeAvatar);
+
+  const groupBody = document.getElementById('group-table-body');
+  if (groupBody) {
+    groupBody.addEventListener('click', (e) => {
+      const btn = e.target.closest('.stake-toggle-btn');
+      if (btn) toggleStakePaid(btn.dataset.pkey, btn.dataset.monthkey);
+    });
+  }
 
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', (e) => switchTab(e.target.dataset.tab, e.target));
@@ -943,6 +1280,20 @@ function setupEventListeners() {
       const cell = e.target.closest('.cell-toggle');
       if (cell) {
         toggleHabit(parseInt(cell.dataset.hidx, 10), parseInt(cell.dataset.day, 10));
+        return;
+      }
+      const actionBtn = e.target.closest('.habit-action-btn');
+      if (actionBtn && !actionBtn.disabled) {
+        const hIdx = parseInt(actionBtn.dataset.hidx, 10);
+        const action = actionBtn.dataset.action;
+        if (action === 'up') moveHabit(hIdx, -1);
+        else if (action === 'down') moveHabit(hIdx, 1);
+        else if (action === 'delete') deleteHabit(hIdx);
+        return;
+      }
+      const nameEl = e.target.closest('.habit-name');
+      if (nameEl) {
+        startRenameHabit(parseInt(nameEl.dataset.hidx, 10), nameEl);
       }
     });
   }
